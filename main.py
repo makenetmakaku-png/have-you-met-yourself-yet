@@ -2,22 +2,14 @@ from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
-    MessageHandler,
     ContextTypes,
-    ConversationHandler,
-    filters,
 )
 
-from database import conn, cursor
+from database import cursor
 
 TOKEN = "8868180441:AAGQlOI_iX9pmlmhdEaOFHNNeIjW8ZfPC94"
 
-ASK_NAME = 1
-
-# ---------------- REGISTER ----------------
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     user = update.effective_user
 
     cursor.execute(
@@ -25,82 +17,86 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         (user.id,)
     )
 
-    exists = cursor.fetchone()
+    row = cursor.fetchone()
 
-    if exists:
+    if row:
         await update.message.reply_text(
-            f"🌿 Welcome back, {exists[1]}!\n\nUse /profile to see your progress."
+            f"🌿 Welcome back, {row[1]}!"
         )
-        return ConversationHandler.END
+    else:
+        cursor.execute(
+            "INSERT INTO users(id,name) VALUES(?,?)",
+            (user.id, user.first_name)
+        )
 
-    await update.message.reply_text(
+        cursor.connection.commit()
 
-"""🌿 Have You Met Yourself Yet?
+        await update.message.reply_text(
+            f"""🌿 Welcome, {user.first_name}!
 
-Welcome to the 200 Things To Do Alone Challenge.
+You've been registered!
 
-Before we begin...
+Today's challenge:
 
-What's your name?"""
-    )
+☕ Drink your coffee without doing anything else.
 
-    return ASK_NAME
+Commands:
 
+/profile
+/leaderboard
+/journal"""
+        )
 
-async def save_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    name = update.message.text
-
-    cursor.execute(
-        "INSERT INTO users(id,name) VALUES(?,?)",
-        (
-            update.effective_user.id,
-            name,
-        ),
-    )
-
-    conn.commit()
-
-    await update.message.reply_text(
-
-f"""Welcome, {name}! 🌱
-
-You are officially registered.
-
-Today's Challenge:
-
-☕ Drink your coffee without doing anything else at the same time.
-
-When you're done use
-
-/journal
-
-Good luck!"""
-    )
-
-    return ConversationHandler.END
-
-
-# ---------------- PROFILE ----------------
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cursor.execute(
         "SELECT name,points,streak FROM users WHERE id=?",
-        (update.effective_user.id,),
+        (update.effective_user.id,)
     )
 
     row = cursor.fetchone()
 
-    if not row:
+    if row:
         await update.message.reply_text(
-            "Register first with /start"
-        )
-        return
-
-    await update.message.reply_text(
-
-f"""👤 {row[0]}
+            f"""👤 {row[0]}
 
 ⭐ Points: {row[1]}
-🔥
+🔥 Streak: {row[2]}
+
+Day 1 / 200"""
+        )
+
+
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    cursor.execute(
+        "SELECT name,points FROM users ORDER BY points DESC"
+    )
+
+    rows = cursor.fetchall()
+
+    text = "🏆 Leaderboard\n\n"
+
+    for i, row in enumerate(rows, 1):
+        text += f"{i}. {row[0]} — {row[1]}⭐\n"
+
+    await update.message.reply_text(text)
+
+
+async def journal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📝 Journal feature coming next."
+    )
+
+
+app = Application.builder().token(TOKEN).build()
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("profile", profile))
+app.add_handler(CommandHandler("leaderboard", leaderboard))
+app.add_handler(CommandHandler("journal", journal))
+
+print("Bot running...")
+
+app.run_polling()
