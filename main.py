@@ -2,56 +2,105 @@ from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
+    MessageHandler,
     ContextTypes,
+    ConversationHandler,
+    filters,
 )
+
+from database import conn, cursor
 
 TOKEN = "8868180441:AAGQlOI_iX9pmlmhdEaOFHNNeIjW8ZfPC94"
 
-WELCOME_MESSAGE = """
-🌿 *Have You Met Yourself Yet?*
+ASK_NAME = 1
+
+# ---------------- REGISTER ----------------
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    cursor.execute(
+        "SELECT * FROM users WHERE id=?",
+        (user.id,)
+    )
+
+    exists = cursor.fetchone()
+
+    if exists:
+        await update.message.reply_text(
+            f"🌿 Welcome back, {exists[1]}!\n\nUse /profile to see your progress."
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text(
+
+"""🌿 Have You Met Yourself Yet?
 
 Welcome to the 200 Things To Do Alone Challenge.
 
-For the next 200 days you'll complete one challenge each day, reflect on it, and earn points.
+Before we begin...
+
+What's your name?"""
+    )
+
+    return ASK_NAME
+
+
+async def save_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    name = update.message.text
+
+    cursor.execute(
+        "INSERT INTO users(id,name) VALUES(?,?)",
+        (
+            update.effective_user.id,
+            name,
+        ),
+    )
+
+    conn.commit()
+
+    await update.message.reply_text(
+
+f"""Welcome, {name}! 🌱
+
+You are officially registered.
 
 Today's Challenge:
 
 ☕ Drink your coffee without doing anything else at the same time.
 
-Commands:
-/journal - Submit today's journal
-/help - Show commands
-"""
+When you're done use
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user.first_name
+/journal
 
-    await update.message.reply_text(
-        f"Hi {user}! 👋\n\n{WELCOME_MESSAGE}",
-        parse_mode="Markdown"
+Good luck!"""
     )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "/start - Start the challenge\n"
-        "/journal - Submit today's journal\n"
-        "/help - Show this menu"
+    return ConversationHandler.END
+
+
+# ---------------- PROFILE ----------------
+
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    cursor.execute(
+        "SELECT name,points,streak FROM users WHERE id=?",
+        (update.effective_user.id,),
     )
 
-async def journal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    row = cursor.fetchone()
+
+    if not row:
+        await update.message.reply_text(
+            "Register first with /start"
+        )
+        return
+
     await update.message.reply_text(
-        "Journal submissions aren't ready yet.\n\nThey'll be added next."
-    )
 
-def main():
-    app = Application.builder().token(TOKEN).build()
+f"""👤 {row[0]}
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("journal", journal))
-
-    print("Bot is running...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+⭐ Points: {row[1]}
+🔥
