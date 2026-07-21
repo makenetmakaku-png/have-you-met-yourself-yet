@@ -69,6 +69,7 @@ Current Streak 🔥 {row[3]}
 
 Use /today."""
         )
+
 # __________ RESET __________
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute(
@@ -209,6 +210,7 @@ app.add_handler(CommandHandler("profile",profile))
 app.add_handler(CommandHandler("leaderboard",leaderboard))
 app.add_handler(CommandHandler("journal",journal))
 app.add_handler(CommandHandler("reset", reset))
+
 print("Bot Running...")
 
 app.run_polling()
