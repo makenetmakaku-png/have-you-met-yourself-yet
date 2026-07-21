@@ -15,11 +15,17 @@ CREATE TABLE IF NOT EXISTS users(
 """)
 
 cursor.execute("""
+CREATE TABLE IF NOT EXISTS challenges(
+    day INTEGER PRIMARY KEY,
+    text TEXT
+)
+""")
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS journals(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     day INTEGER,
-    challenge TEXT,
     journal TEXT,
     points INTEGER,
     date TEXT
