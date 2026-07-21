@@ -69,7 +69,14 @@ Current Streak 🔥 {row[3]}
 
 Use /today."""
         )
-
+# __________ RESET __________
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cursor.execute(
+        "DELETE FROM users WHERE id=?",
+        (update.effective_user.id,)
+    )
+    conn.commit()
+    await update.message.reply_text("Your account has been reset.")
 # ---------- TODAY ----------
 
 async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -201,7 +208,7 @@ app.add_handler(CommandHandler("today",today))
 app.add_handler(CommandHandler("profile",profile))
 app.add_handler(CommandHandler("leaderboard",leaderboard))
 app.add_handler(CommandHandler("journal",journal))
-
+app.add_handler(CommandHandler("reset", reset))
 print("Bot Running...")
 
 app.run_polling()
